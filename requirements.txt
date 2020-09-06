@@ -1,0 +1,5 @@
+aiocache~=0.11.1
+aiohttp~=3.6.2
+google-cloud-translate~=3.0.1
+msgpack~=1.0.0
+ujson~=3.1.0
