@@ -24,7 +24,7 @@ class Google(BaseProvider):
                 }
 
     async def detect(self, content) -> str:
-        res = (await self.client.detect_language(parent=self.parent, content=content)).languages
+        res = (await self.client.detect_language(parent=self.parent, content=content)).languages[0]
         return res.language_code
 
     async def translate(self, content: str, to: str, fro="", **options) -> [Translation]:
