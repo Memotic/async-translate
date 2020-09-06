@@ -9,7 +9,7 @@ with open("README.md") as fh:
 
 setuptools.setup(
     name="async_translate",
-    version="0.0.1",
+    version="0.0.2",
     author="William Hatcher",
     author_email="william@memotic.net",
     description="Multi-provider async translate API",
