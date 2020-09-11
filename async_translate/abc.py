@@ -9,7 +9,7 @@ ONE_DAY = 86400
 class Translation:
     text: str
     to: str
-    backend: 'BaseProvider'
+    provider: 'BaseProvider'
     detectedLanguage: Optional[str] = None
 
 
@@ -22,7 +22,7 @@ class BaseProvider(ABC):
         return self.__class__.__name__
 
     @abstractmethod
-    async def get_languages(self) -> Dict[str, str]:
+    async def get_languages(self, *args, **kwargs) -> Dict[str, str]:
         raise NotImplementedError
 
     @abstractmethod
