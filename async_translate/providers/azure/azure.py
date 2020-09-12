@@ -82,7 +82,7 @@ class Azure(BaseProvider):
                 for translation in ts:
                     translation_response.append(
                         Translation(text=translation.get('text'), to=translation.get('to'),
-                                    backend=self,
+                                    provider=self,
                                     detectedLanguage=detected_language)
                     )
             return translation_response

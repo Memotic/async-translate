@@ -48,7 +48,7 @@ class Google(BaseProvider):
         for trans in translations:
             translation_response.append(Translation(
                 to=to, text=unescape(trans.translated_text),
-                backend=self,
+                provider=self,
                 detectedLanguage=trans.detected_language_code or None
             ))
         return translation_response
