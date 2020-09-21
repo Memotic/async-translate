@@ -1,7 +1,7 @@
 import setuptools
 import os
 
-__VERSION__ = "0.0.4"
+__VERSION__ = "0.0.6"
 
 # Setup Optional requirements
 extras_require = {}
@@ -13,7 +13,7 @@ for provider_dir in dirs:
     name = provider_dir[0].split('/')[-1]
     dependencies = []
     try:
-        with open(os.path.join("/home/william/PycharmProjects/async-translate/async_translate/providers", name,
+        with open(os.path.join("async_translate/providers", name,
                                "requirements.txt")) as fh:
             dependencies = fh.read().splitlines()
     except FileNotFoundError:
@@ -34,6 +34,7 @@ setuptools.setup(
     url="https://github.com/Memotic/async-translate",
     packages=setuptools.find_packages(),
     extras_require=extras_require,
+    license='MIT',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
