@@ -18,8 +18,6 @@ class Google(BaseProvider):
     async def get_languages(self, display_language_code="en") -> Dict[str, str]:
         langs = (await self.client.get_supported_languages(parent=self.parent,
                                                            display_language_code=display_language_code)).languages
-        for x in langs:
-            print(x)
         return {lang.language_code: lang.display_name
                 for lang in
                 filter(lambda l: l.support_source and l.support_target, langs)
