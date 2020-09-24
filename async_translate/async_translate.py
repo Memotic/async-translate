@@ -2,7 +2,7 @@ import types
 from typing import Optional, Dict
 
 from .abc import BaseProvider, Translation
-from .errors import ProviderAlreadyAdded, NoProvidersAdded, LanguageNotSupported
+from .errors import ProviderAlreadyAdded, LanguageNotSupported
 from .caseinsensitivedict import CaseInsensitiveDict
 
 
@@ -55,12 +55,12 @@ class AsyncTranslate:
     def provider_for(self, language: str, preferred: Optional[str] = "") -> BaseProvider:
         """Returns a valid provider for the specified language"""
         # precondition self._providers has at least one provider in it
-        backend = self._languages.get(language)
-        if not backend or len(backend) == 0:
+        preferred = preferred.casefold()
+        try:
+            providers = map(lambda x: x.casefold(), self._languages.get(language))
+        except TypeError:
             raise LanguageNotSupported(language)
-        if len(self._providers) == 0:
-            raise NoProvidersAdded()
-        return self._providers[preferred] if preferred in backend else self._providers[backend[0]]
+        return self._providers[preferred] if preferred in providers else self._providers[providers[0]]
 
     async def detect(self, content: str, preferred: Optional[str] = None) -> (str, BaseProvider):
         provider: BaseProvider = self.providers[preferred] if preferred else self.default_provider
