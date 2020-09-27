@@ -55,9 +55,10 @@ class AsyncTranslate:
     def provider_for(self, language: str, preferred: Optional[str] = "") -> BaseProvider:
         """Returns a valid provider for the specified language"""
         # precondition self._providers has at least one provider in it
-        preferred = preferred.casefold()
+        if preferred:
+            preferred = preferred.casefold()
         try:
-            providers = map(lambda x: x.casefold(), self._languages.get(language))
+            providers = list(map(lambda x: x.casefold(), self._languages.get(language)))
         except TypeError:
             raise LanguageNotSupported(language)
         return self._providers[preferred] if preferred in providers else self._providers[providers[0]]
