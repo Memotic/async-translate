@@ -2,7 +2,7 @@ import types
 from typing import Optional, Dict
 
 from .abc import BaseProvider, Translation
-from .errors import ProviderAlreadyAdded, LanguageNotSupported
+from .errors import *
 from .caseinsensitivedict import CaseInsensitiveDict
 
 
@@ -77,4 +77,6 @@ class AsyncTranslate:
         :return: A list of translations
         """
         provider = self.provider_for(to, preferred=preferred)
+        if provider != self.provider_for(fro):
+            raise ProvidersMismatch(fro)
         return await provider.translate(content, to=to, fro=fro, **options)

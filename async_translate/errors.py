@@ -13,3 +13,8 @@ class ProviderAlreadyAdded(TranslatorException):
 class LanguageNotSupported(TranslatorException):
     def __init__(self, language):
         super().__init__(f"Language {language} is not supported with the current providers.")
+
+
+class ProvidersMismatch(TranslatorException):
+    def __init__(self, language):
+        super().__init__(f"From language {language} is not supported with the chosen to provider.")
