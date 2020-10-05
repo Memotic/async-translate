@@ -77,6 +77,7 @@ class AsyncTranslate:
         :return: A list of translations
         """
         provider = self.provider_for(to, preferred=preferred)
-        if provider != self.provider_for(fro):
-            raise ProvidersMismatch(fro)
+        if fro:
+            if provider != self.provider_for(fro):
+                raise ProvidersMismatch(fro)
         return await provider.translate(content, to=to, fro=fro, **options)
