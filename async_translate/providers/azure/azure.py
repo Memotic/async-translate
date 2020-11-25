@@ -6,6 +6,7 @@ import aiohttp
 from aiocache import cached
 
 from async_translate.abc import BaseProvider, ONE_DAY, Translation
+from async_translate.errors import TranslatorException
 
 MS_API_VER = "?api-version=3.0"
 
@@ -70,6 +71,9 @@ class Azure(BaseProvider):
 
         json_content = [{"text": content}]
         async with self.session.post(url, headers=self.headers, json=json_content) as resp:
+            if resp.status != 200:
+                raise TranslatorException(resp.status)
+
             json_response = (await resp.json())[0]
             translation_response = []
 
