@@ -1,4 +1,5 @@
 from html import unescape
+import os
 from typing import Dict
 
 from aiocache import cached
@@ -10,9 +11,17 @@ from async_translate.abc import BaseProvider, ONE_DAY, Translation
 class Google(BaseProvider):
     icon = "https://i.imgur.com/jDPXiQh.png"
 
-    def __init__(self):
+    def __init__(self, parent: str = None):
+        """
+
+        :param parent: Optional string of parent project. If not present, will get from GOOGLE_TRANSLATE_PARENT env var
+        """
         self.client = TranslationServiceAsyncClient()
-        self.parent = "projects/mr-translate-1577912381600/locations/global"
+        try:
+            self.parent = parent or os.environ['GOOGLE_TRANSLATE_PARENT']
+        except KeyError:
+            raise Exception("Please set/export the 'GOOGLE_TRANSLATE_PARENT' environment variable. "
+                            "Ex: 'projects/mr-translate-1577912381600/locations/global'")
 
     @cached(ttl=ONE_DAY)
     async def get_languages(self, display_language_code="en") -> Dict[str, str]:
