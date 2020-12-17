@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import Dict
+from typing import Dict, Optional
 
 import aiohttp
 from aiocache import cached
@@ -21,11 +21,11 @@ class Azure(BaseProvider):
     ms_endpoint = "https://api.cognitive.microsofttranslator.com/"
     icon = "https://connectoricons-prod.azureedge.net/microsofttranslator/icon_1.0.1303.1871.png"
 
-    def __init__(self):
+    def __init__(self, translate_key: Optional[str] = None):
         self.session = aiohttp.ClientSession()
-        if 'MS_TRANSLATE_KEY' not in os.environ:
+        self.ms_key = translate_key or os.environ['MS_TRANSLATE_KEY']
+        if not self.ms_key and 'MS_TRANSLATE_KEY' not in os.environ:
             raise Exception("Please set/export the 'MS_TRANSLATE_KEY' environment variable.")
-        self.ms_key = os.environ['MS_TRANSLATE_KEY']
 
     @property
     def headers(self):
