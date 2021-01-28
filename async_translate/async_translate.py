@@ -10,7 +10,7 @@ class AsyncTranslate:
     def __init__(self):
         self._languages = CaseInsensitiveDict()
         self._providers = CaseInsensitiveDict()
-        self.language_names: Dict[str, str] = {}
+        self.language_names = CaseInsensitiveDict()
 
     @property
     def providers(self):
