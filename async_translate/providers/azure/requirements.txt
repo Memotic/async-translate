@@ -2,3 +2,4 @@ aiocache
 aiohttp
 ujson
 msgpack
+aiohttp_retry

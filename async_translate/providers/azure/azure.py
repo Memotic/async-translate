@@ -1,92 +1,140 @@
-import os
 import uuid
-from typing import Dict, Optional
+from json import JSONDecodeError
+from typing import Dict, Optional, Union, Sequence, List, Any
 
-import aiohttp
-from aiocache import cached
+from aiohttp_retry import RetryClient, ExponentialRetry
 
-from async_translate.abc import BaseProvider, ONE_DAY, Translation
-from async_translate.errors import TranslatorException
+from async_translate.abc import BaseProvider, Translation
+from async_translate.errors import TranslatorException, LanguageNotSupported
 
 MS_API_VER = "?api-version=3.0"
+retry_options = ExponentialRetry(attempts=10, start_timeout=8.0, factor=1.3, statuses={429})
+
+
+class RequestException(TranslatorException):
+    def __init__(self, base, code: int, message: str):
+        self.code: int = code
+        self.message: str = message
+        super().__init__(base)
 
 
 class Azure(BaseProvider):
     """
     Microsoft Azure Cognitive Services translator Backend
-    Required environment variables:
-    `MS_TRANSLATE_KEY`
     """
     backend = "azure"
     ms_endpoint = "https://api.cognitive.microsofttranslator.com/"
     icon = "https://connectoricons-prod.azureedge.net/microsofttranslator/icon_1.0.1303.1871.png"
 
-    def __init__(self, translate_key: Optional[str] = None, session: Optional[aiohttp.ClientSession] = None):
-        self.session = session or aiohttp.ClientSession()
-        self.ms_key = translate_key or os.environ['MS_TRANSLATE_KEY']
-        if not self.ms_key and 'MS_TRANSLATE_KEY' not in os.environ:
-            raise Exception("Please set/export the 'MS_TRANSLATE_KEY' environment variable.")
+    def __init__(self, api_keys: Union[str, Sequence[str]]):
+        if isinstance(api_keys, str):
+            self._api_keys: List[str] = [api_keys]
+        else:
+            if len(api_keys) < 1:
+                raise TranslatorException("No API keys provided")
+            self._api_keys: Sequence[str] = api_keys
+        self.api_iter = iter(self._api_keys)
+        self.current_key = next(self.api_iter)
+        self.session: Optional[RetryClient] = None
 
     @property
     def headers(self):
         return {
-            'Ocp-Apim-Subscription-Key': self.ms_key,
+            'Ocp-Apim-Subscription-Key': self.current_key,
             'Content-type': 'application/json',
             'X-ClientTraceId': str(uuid.uuid4())
         }
 
-    @cached(ttl=ONE_DAY)
-    async def get_languages(self) -> Dict[str, str]:
-        url = self.ms_endpoint + "languages" + MS_API_VER + "&scope=translation"
-        async with self.session.get(url, headers=self.headers) as resp:
-            raw_langs = (await resp.json())['translation']
+    async def _request(self, endpoint, method='post', params: Optional[Dict] = None, json: Any = None):
+        if params is None:
+            params = {}
 
-            return {key: value['name'] for key, value in raw_langs.items()}
+        headers = self.headers
+        if accept_language := params.pop('accept_language', None):
+            headers['Accept-Language'] = accept_language
+        url = self.ms_endpoint + endpoint + MS_API_VER + "&"
+        async with self.session.request(method=method, url=url, params=params, headers=headers, json=json) as resp:
+            try:
+                data = await resp.json(content_type=None)
+                try:
+                    if error := data.get('error'):
+                        # Handle Free Quota Errors
+                        if error['code'] in (401000, 403000, 403001, 429000, 429001, 429002):
+                            full_stop = False
+                            try:
+                                self.current_key = next(self.api_iter)
+                            except StopIteration:
+                                self.api_iter = iter(self._api_keys)
+                                self.current_key = next(self.api_iter)
+                                full_stop = True
+                            else:
+                                return await self._request(endpoint, method, params, json)
+                            if full_stop:
+                                raise TranslatorException("All API Keys Exhausted", error)
+                        else:  # Handle Generic Errors
+                            raise RequestException(error, **error)
+                except AttributeError:
+                    pass
+                return data
+            except JSONDecodeError as e:
+                raise TranslatorException(await resp.text()) from e
+
+    async def get_languages(self, locale=None, *args, **kwargs) -> Dict[str, str]:
+        # Setup retry client
+        if not self.session:
+            self.session = RetryClient(retry_options=retry_options)
+
+        raw_languages = await self._request('languages', 'get',
+                                            {'scope': 'translation', 'accept_language': locale})
+        return {key: value['name'] for key, value in raw_languages['translation'].items()}
+
+    async def close(self):
+        # noinspection PyProtectedMember
+        if self.session._closed:
+            return
+        await self.session.close()
 
     async def detect(self, content) -> str:
         """Detect the language of the given content"""
-        url = self.ms_endpoint + "detect" + MS_API_VER
         json_content = [{"text": content}]
-        async with self.session.post(url, headers=self.headers, json=json_content) as resp:
+        result = await self._request('detect', json=json_content)
+        return result[0]['language']
 
-            return (await resp.json())[0]['language']
-
-    async def translate(self, content: str, to: str, fro="", **options) -> [Translation]:
+    async def translate(self, content: str, to: str, source="", **options) -> Translation:
         """
         Translates text using the Azure API
         :param content: the text to translate
         :param to: the language code to translate to
-        :param fro: Optional language to translate from
+        :param source: Optional language to translate from
         :return: the translation
         """
-        url = self.ms_endpoint + "translate" + MS_API_VER + "&to=" + to
-        if fro:
-            url += "&from=" + fro
+        params = {
+            'to': to,
+            'profanityAction': ('NoAction', 'Marked', 'Marked')[options.get('profanity_filter') or 0]
+        }
+        if source:
+            params['from'] = source
 
-        profanity_filter = options.get('profanity_filter') or 0
-
-        url += "&profanityAction=" + ['NoAction', 'Marked', 'Marked'][profanity_filter]
-        if profanity_filter == 1:
-            url += "&profanityMarker=Tag"
+        if params['profanityAction'] == 1:
+            params['profanityMarker'] = 'Tag'
 
         json_content = [{"text": content}]
-        async with self.session.post(url, headers=self.headers, json=json_content) as resp:
-            if resp.status != 200:
-                raise TranslatorException(resp.status)
+        try:
+            translation_response = (await self._request('translate', params=params, json=json_content))
+        except RequestException as te:
+            if te.code in (400004, 400036, 400018, 400035):  # Invalid/missing language
+                if te.code in (400018, 400035):  # Invalid 'from'
+                    language = source
+                    direction = "from"
+                else:  # Invalid 'to'
+                    language = to
+                    direction = "to"
+                raise LanguageNotSupported(language=language, direction=direction) from te
+            raise
 
-            json_response = (await resp.json())[0]
-            translation_response = []
-
-            try:
-                detected_language = json_response.get('detectedLanguage').get('language')
-            except AttributeError:
-                detected_language = None
-
-            if ts := json_response.get('translations'):
-                for translation in ts:
-                    translation_response.append(
-                        Translation(text=translation.get('text'), to=translation.get('to'),
-                                    provider=self,
-                                    detectedLanguage=detected_language)
-                    )
-            return translation_response
+        entry = translation_response[0]
+        return Translation(
+            text=entry['translations'][0]['text'],
+            to=entry['translations'][0]['to'],
+            source=entry.get('detectedLanguage', {}).get('language')
+        )

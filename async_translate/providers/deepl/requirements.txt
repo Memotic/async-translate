@@ -1,4 +1,0 @@
-aiocache
-aiohttp
-ujson
-msgpack

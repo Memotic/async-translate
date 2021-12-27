@@ -34,7 +34,7 @@ class CaseInsensitiveDict(MutableMapping):
         # key alongside the value.
         self._store[key.casefold()] = (key, value)
 
-    def __getitem__(self, key:str):
+    def __getitem__(self, key: str):
         return self._store[key.casefold()][1]
 
     def __delitem__(self, key:str):
@@ -45,6 +45,9 @@ class CaseInsensitiveDict(MutableMapping):
 
     def __len__(self):
         return len(self._store)
+
+    def get_key(self, key: str) -> str:
+        return self._store[key.casefold()][0]
 
     def lower_items(self):
         """Like iteritems(), but with all lowercase keys."""

@@ -1,51 +1,64 @@
-import types
-from typing import Optional, Dict
-
+from functools import cached_property
+from types import MappingProxyType
+from typing import Optional, Dict, Set, Mapping
+from .caseinsensitivedict import CaseInsensitiveDict
 from .abc import BaseProvider, Translation
 from .errors import *
-from .caseinsensitivedict import CaseInsensitiveDict
 
 
 class AsyncTranslate:
     def __init__(self):
-        self._languages = CaseInsensitiveDict()
-        self._providers = CaseInsensitiveDict()
-        self.language_names = CaseInsensitiveDict()
+        self._providers: Dict[str, BaseProvider] = {}  # {'provider_name': ProviderInstance() }
+        self._languages: Dict[str, Set[str]] = {}  # {'language_name': {'provider_name'} }
+        self._language_names: Dict[str, str] = {}  # {'en': 'English'}
 
     @property
-    def providers(self):
+    def providers(self) -> Mapping[str, BaseProvider]:
         """Returns read-only copy of the providers"""
-        return types.MappingProxyType(self._providers)
+        return MappingProxyType(self._providers)
 
     @property
+    def languages(self) -> Mapping[str, Set[str]]:
+        """Returns read-only copy of the languages"""
+        return MappingProxyType(self._languages)
+
+    @property
+    def language_names(self) -> Mapping[str, str]:
+        return CaseInsensitiveDict(self._language_names)
+
+    @cached_property
+    def language_by_names(self) -> Mapping[str, str]:
+        """Returns read-only copy of language codes with their English names"""
+        return CaseInsensitiveDict({name: code for code, name in self._language_names.items()})
+
+    @cached_property
     def default_provider(self) -> BaseProvider:
         """Returns the default (first) provider"""
         return next(iter(self._providers.values()))
 
-    @property
-    def languages(self):
-        """Returns read-only copy of the supported languages"""
-        return types.MappingProxyType(self._languages)
+    async def close(self):
+        """Close all Provider aiohttp loops"""
+        for provider in self._providers.values():
+            await provider.close()
 
     async def add_provider(self, provider: BaseProvider):
         """Add a translator provider"""
         if not isinstance(provider, BaseProvider):
             raise TypeError('Providers must derive from BaseProvider')
 
-        name = provider.name
+        # Add to internal store
+        provider_name = provider.name.casefold()
+        if provider_name in self._providers:
+            raise ProviderAlreadyAdded(provider_name)
+        self._providers[provider_name] = provider
 
-        if name in self._providers:
-            raise ProviderAlreadyAdded(name)
-        self._providers[name] = provider
-
-        for lang, lang_name in (await provider.get_languages()).items():
-            bck_str = [name]
-            if added_lang := self._languages.get(lang):
-                self._languages[lang] = added_lang + bck_str
+        languages = await provider.get_languages()
+        for code, language_name in languages.items():
+            self._language_names[code] = language_name
+            if code in self._languages:
+                self._languages[code].add(provider_name)
             else:
-                self._languages[lang] = bck_str
-                # Only set name if it hasn't been added already
-                self.language_names[lang] = lang_name
+                self._languages[code] = {provider_name}
 
     async def add_providers(self, *backends: [BaseProvider]):
         """Add multiple providers"""
@@ -53,31 +66,20 @@ class AsyncTranslate:
             await self.add_provider(b)
 
     def provider_for(self, language: str, preferred: Optional[str] = "") -> BaseProvider:
-        """Returns a valid provider for the specified language"""
-        # precondition self._providers has at least one provider in it
-        if preferred:
-            preferred = preferred.casefold()
         try:
-            providers = list(map(lambda x: x.casefold(), self._languages.get(language)))
-        except TypeError:
+            available_providers = list(self._languages[language])
+        except KeyError:
             raise LanguageNotSupported(language)
-        return self._providers[preferred] if preferred in providers else self._providers[providers[0]]
+        return self._providers[preferred if preferred in available_providers else available_providers[0]]
 
-    async def detect(self, content: str, preferred: Optional[str] = None) -> (str, BaseProvider):
-        provider: BaseProvider = self.providers[preferred] if preferred else self.default_provider
-        return await provider.detect(content), provider
+    async def translate(self, to: str, content: str, provider: BaseProvider,
+                        source_language: Optional[str] = None, **options) -> Translation:
+        # Assumes to & source_language are valid language codes
+        if source_language and source_language == to:
+            raise DetectedAsSameError(to_language=to, detected_language=source_language)
 
-    async def translate(self, content: str, to: str, fro="", preferred: Optional[str] = None, **options) -> [Translation]:
-        """
-        Translates the given content to the specified language
-        :param content: Content to translate
-        :param to: Language code to translate to
-        :param fro: Optional language to translate from
-        :param preferred: Optional provider to prefer
-        :return: A list of translations
-        """
-        provider = self.provider_for(to, preferred=preferred)
-        if fro:
-            if provider != self.provider_for(fro):
-                raise ProvidersMismatch(fro)
-        return await provider.translate(content, to=to, fro=fro, **options)
+        # Detect translating to/from same language
+        detected_language = await self.providers.get('azure').detect(content.strip())
+        if to == detected_language:
+            raise DetectedAsSameError(to_language=to, detected_language=detected_language)
+        return await provider.translate(content, to=to, fro=source_language, **options)
