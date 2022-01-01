@@ -35,6 +35,8 @@ class CaseInsensitiveDict(MutableMapping):
         self._store[key.casefold()] = (key, value)
 
     def __getitem__(self, key: str):
+        if key is None:
+            raise KeyError(key)
         return self._store[key.casefold()][1]
 
     def __delitem__(self, key:str):
