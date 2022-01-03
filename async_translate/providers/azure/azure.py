@@ -45,11 +45,16 @@ class Azure(BaseProvider):
             'X-ClientTraceId': str(uuid.uuid4())
         }
 
-    async def _request(self, endpoint, method='post', params: Optional[Dict] = None, json: Any = None):
+    async def _request(self, endpoint, method='post', params: Optional[Dict] = None, json: Any = None,
+                       api_key_override: Optional[str] = None):
         if params is None:
             params = {}
 
         headers = self.headers
+
+        if api_key_override:
+            headers['Ocp-Apim-Subscription-Key'] = api_key_override
+
         if accept_language := params.pop('accept_language', None):
             headers['Accept-Language'] = accept_language
         url = self.ms_endpoint + endpoint + MS_API_VER + "&"
@@ -94,7 +99,7 @@ class Azure(BaseProvider):
             return
         await self.session.close()
 
-    async def detect(self, content) -> str:
+    async def detect(self, content, key_override: Optional[str] = None) -> str:
         """Detect the language of the given content"""
         json_content = [{"text": content}]
         result = await self._request('detect', json=json_content)

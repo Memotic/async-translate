@@ -1,7 +1,7 @@
 import setuptools
 import os
 
-__VERSION__ = "1.0.1"
+__VERSION__ = "1.0.2"
 
 # Setup Optional requirements
 extras_require = {}
