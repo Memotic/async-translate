@@ -11,6 +11,10 @@ MS_API_VER = "?api-version=3.0"
 retry_options = ExponentialRetry(attempts=10, start_timeout=8.0, factor=1.3, statuses={429})
 
 
+class AllKeysExhausted(TranslatorException):
+    pass
+
+
 class RequestException(TranslatorException):
     def __init__(self, base, code: int, message: str):
         self.code: int = code
@@ -75,7 +79,7 @@ class Azure(BaseProvider):
                             else:
                                 return await self._request(endpoint, method, params, json)
                             if full_stop:
-                                raise TranslatorException("All API Keys Exhausted", error)
+                                raise AllKeysExhausted("All API Keys Exhausted", error)
                         else:  # Handle Generic Errors
                             raise RequestException(error, **error)
                 except AttributeError:
