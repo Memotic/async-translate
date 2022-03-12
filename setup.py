@@ -1,5 +1,6 @@
 import setuptools
 import os
+import versioneer
 
 __VERSION__ = "1.0.2"
 
@@ -25,7 +26,8 @@ with open("README.md") as fh:
 
 setuptools.setup(
     name="async_translate",
-    version=__VERSION__,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author="William Hatcher",
     author_email="william@memotic.net",
     description="Multi-provider async translate API",

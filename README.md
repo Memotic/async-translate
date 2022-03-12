@@ -1,6 +1,4 @@
 # async_translate
-
-
 Multi-provider async translate API
 
 ## Why?
@@ -13,7 +11,7 @@ I built this to use with my Discord bot, [Mr. Translate](https://docs.mrtranslat
 
 
 ## Installation
-**Currently this uses Python 3.8 specific features. See [ROADMAP.md](ROADMAP.md)**
+**Currently this uses Python 3.8 specific features.**
  
 Install with `pip install -U async-translate`.
 
@@ -26,10 +24,6 @@ A few providers are baked into this package. You can install them with:
 See [CUSTOM_PROVIDERS.md](async_translate/providers/CUSTOM_PROVIDERS.md) on making your own providers.
 
 Feel free to contribute back to the project with a pull request containing code for other providers.
-
-## Sample Usage
-See [sample.py](sample.py) for basic sample usage
-
 
 [azure]: https://azure.microsoft.com/en-us/services/cognitive-services/translator/
 [google]: https://cloud.google.com/translate
