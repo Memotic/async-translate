@@ -2,8 +2,6 @@ import setuptools
 import os
 import versioneer
 
-__VERSION__ = "1.0.2"
-
 # Setup Optional requirements
 extras_require = {}
 suffix_len = len("_requirements.txt")
