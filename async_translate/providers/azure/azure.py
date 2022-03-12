@@ -106,7 +106,7 @@ class Azure(BaseProvider):
     async def detect(self, content, key_override: Optional[str] = None) -> str:
         """Detect the language of the given content"""
         json_content = [{"text": content}]
-        result = await self._request('detect', json=json_content)
+        result = await self._request('detect', json=json_content, api_key_override=key_override)
         return result[0]['language']
 
     async def translate(self, content: str, to: str, source="", **options) -> Translation:
