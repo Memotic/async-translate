@@ -6,20 +6,10 @@ from aiohttp_retry import RetryClient, ExponentialRetry
 
 from async_translate.abc import BaseProvider, Translation
 from async_translate.errors import TranslatorException, LanguageNotSupported
+from async_translate.providers.azure.errors import NoAPIKeys, AllKeysExhausted, RequestException
 
 MS_API_VER = "?api-version=3.0"
 retry_options = ExponentialRetry(attempts=10, start_timeout=8.0, factor=1.3, statuses={429})
-
-
-class AllKeysExhausted(TranslatorException):
-    pass
-
-
-class RequestException(TranslatorException):
-    def __init__(self, base, code: int, message: str):
-        self.code: int = code
-        self.message: str = message
-        super().__init__(base)
 
 
 class Azure(BaseProvider):
@@ -35,7 +25,7 @@ class Azure(BaseProvider):
             self._api_keys: List[str] = [api_keys]
         else:
             if len(api_keys) < 1:
-                raise TranslatorException("No API keys provided")
+                raise NoAPIKeys("No API keys provided")
             self._api_keys: Sequence[str] = api_keys
         self.api_iter = iter(self._api_keys)
         self.current_key = next(self.api_iter)
@@ -69,7 +59,6 @@ class Azure(BaseProvider):
                     if error := data.get('error'):
                         # Handle Free Quota Errors
                         if error['code'] in (401000, 403000, 403001, 429000, 429001, 429002):
-                            full_stop = False
                             try:
                                 self.current_key = next(self.api_iter)
                             except StopIteration:
