@@ -77,7 +77,7 @@ class AsyncTranslateTests(IsolatedAsyncioTestCase):
             Azure(testCreds.azure_keys),
             Google(testCreds.google_credentials, testCreds.google_parent)
         )
-        provider = self.translator.provider_for('fr', preferred='azure')
+        provider = self.translator.provider_for('de', preferred='azure')
         self.assertIsInstance(provider, Azure)
 
     async def test_prefer_google(self):
@@ -85,7 +85,7 @@ class AsyncTranslateTests(IsolatedAsyncioTestCase):
             Azure(testCreds.azure_keys),
             Google(testCreds.google_credentials, testCreds.google_parent)
         )
-        provider = self.translator.provider_for('fr', preferred='google')
+        provider = self.translator.provider_for('de', preferred='google')
         self.assertIsInstance(provider, Google)
 
 
