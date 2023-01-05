@@ -21,7 +21,7 @@ class Google(BaseProvider):
         else:
             self.client = TranslationServiceAsyncClient()
         try:
-            self.parent = parent or os.environ['GOOGLE_TRANSLATE_PARENT']
+            self.parent = parent or os.environ.get('GOOGLE_TRANSLATE_PARENT', None)
         except KeyError:
             raise TranslatorException("Please set/export the 'GOOGLE_TRANSLATE_PARENT' environment variable. "
                                       "Ex: 'projects/mr-translate-1577912381600/locations/global'")
