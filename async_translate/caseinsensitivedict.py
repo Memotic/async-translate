@@ -1,5 +1,9 @@
-from collections import MutableMapping, OrderedDict, Mapping
+from collections import OrderedDict, Mapping
 
+try:
+    from collections import MutableMapping
+except ImportError:
+    from collections.abc import MutableMapping
 
 class CaseInsensitiveDict(MutableMapping):
     """A case-insensitive ``dict``-like object.
