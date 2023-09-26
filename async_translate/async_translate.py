@@ -79,7 +79,7 @@ class AsyncTranslate:
             raise DetectedAsSameError(to_language=to, detected_language=source_language)
 
         # Detect translating to/from same language
-        detected_language = await self.providers.get('azure').detect(content.strip())
+        detected_language = await provider.detect(content.strip())
         if to == detected_language:
             raise DetectedAsSameError(to_language=to, detected_language=detected_language)
         return await provider.translate(content, to=to, source=source_language, **options)
